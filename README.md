@@ -1,6 +1,8 @@
 # HypixelHousingBotTutorial
 This will show you how to make a Minecraft Hypixel Housing Bot
 
+Start by reading the [Mineflayer Tutorial](https://github.com/PrismarineJS/mineflayer/blob/master/docs/tutorial.md)
+
 ## Contents
 1. [Setup](##Setup)
 2. [Creating a project](##Creating-a-project)
@@ -95,3 +97,74 @@ Run your bot. It will log into whatever lobby it last logged out of. If the bot 
 
 If there are any exceptions, they will show up in your debug console.
 ![image](https://user-images.githubusercontent.com/13612376/143781031-14288934-d2ba-4bbc-b9ec-0e484b0412e2.png)
+
+## Joining a house
+There is a three step process for joining a house on Hypixel
+1. Go to the housing lobby
+2. Type /visit HouseOwnerName
+3. Click the house you'd like to join
+
+To have your bot go to the housing lobby, go onto Hypixel on the bot account, move the bot into the housing lobby, and log out. This will cause the bot to log into the housing lobby when you run your bot script.
+
+
+Now we need our bot to run /visit HouseOwnerName. An inventory will pop up on the bot's end. We need the bot to searh through it to find the house we want by name. The bot must then click that item. If there are too many houses with the same name or no matches for the house name, the bot should notify the user. Additionally, the bot should log all the houses the house owner owns.
+
+```js
+const mineflayer = require('mineflayer')
+
+const bot = mineflayer.createBot({
+  host: 'play.hypixel.net', // This can also be your test server ip
+  username: 'email@example.com', // minecraft username
+  password: '12345678'
+  // auth: 'mojang'              // only set if you need microsoft auth, then set this to 'microsoft'
+})
+
+const housingOwnerName = "houseOwnerName";
+const housingNamePart = "purple";//A case insensitive substring of the housing name used to find the house. Beware of color symblols.
+
+bot.once('spawn', runVisitCommand);
+
+bot.on('windowOpen', (window) => {
+    console.log("Window opened");
+    let matches = window.containerItems().filter(item => item.customName.toLowerCase().includes(housingNamePart.toLowerCase()));
+
+    if (matches.length == 0){
+        console.log();
+        console.log(`No matches for housing name "${housingNamePart}". Is the house visible to you?`);
+        console.log(`Possible houses for ${housingOwnerName}`);
+        const housingCanidates = window.containerItems().filter(item => item != null && item.customName != "");
+        for (const housingCanidate of housingCanidates){
+            console.log("\t" + housingCanidate.customName);
+        }
+    }
+
+    if (matches.length > 1){
+        console.log();
+        console.log(`Too many matches found for housing name ${housingNamePart}`);
+        console.log(`Matches`);
+        for (const match of matches)
+            console.log("\t" + match.customName);     
+    }
+
+    if (matches.length == 1){
+        bot.once('spawn', botJoinedHouse);
+        console.log('Slot to click: ' + matches[0].slot);
+        bot.clickWindow(matches[0].slot, 0, 0);
+    }
+
+});
+
+function runVisitCommand(){
+    console.log(`Executing /visit ${housingOwnerName}`);
+    bot.chat(`/visit ${housingOwnerName}`)
+}
+
+function botJoinedHouse(){
+    console.log(`Joined ${housingOwnerName}'s house'`);
+}
+
+// Log errors and kick reasons:
+bot.on('kicked', console.log)
+bot.on('error', console.log)
+
+```
